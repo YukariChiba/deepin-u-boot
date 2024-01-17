@@ -1,0 +1,12 @@
+== Installation ==
+
+At this point, you must install U-Boot to flash yourself.
+
+For the SiFive HiFive Unmatched, something like the following should work:
+
+ dd conv=fsync,notrunc if=/usr/lib/u-boot/sifive_unmatched/u-boot-spl.bin of=/dev/DEVICE bs=4096 seek=5
+ dd conv=fsync,notrunc if=/usr/lib/u-boot/sifive_unmatched/u-boot.itb of=/dev/DEVICE bs=4096 seek=261
+
+For DEVICE of mmcblk0, the MSEL dip switches should be set to the default of 1011.
+
+For mtdblock0 (the SPI flash), you'll need to "modprobe mtdblock" and set the MSEL dip switches to 0110.

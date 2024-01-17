@@ -1,0 +1,104 @@
+#!/bin/sh
+set -e
+
+dtmodel="/sys/firmware/devicetree/base/model"
+if [ -z "$TARGET" ] && [ -f "${dtmodel}" ]; then
+	dtmodelname=$(cat $dtmodel)
+	case "$dtmodelname" in
+		"Banana Pi BPI-M2-Ultra") TARGET="/usr/lib/u-boot/Bananapi_M2_Ultra" ;;
+		"Banana Pi BPI-M3") TARGET="/usr/lib/u-boot/Sinovoip_BPI_M3" ;;
+		"Banana Pi M2 Berry") TARGET="/usr/lib/u-boot/bananapi_m2_berry" ;;
+		"Cubietech Cubieboard") TARGET="/usr/lib/u-boot/Cubieboard" ;;
+		"Cubietech Cubieboard2") TARGET="/usr/lib/u-boot/Cubieboard2" ;;
+		"Cubietech Cubieboard4") TARGET="/usr/lib/u-boot/Cubieboard4" ;;
+		"Cubietech Cubietruck") TARGET="/usr/lib/u-boot/Cubietruck" ;;
+		"Cubietech Cubietruck Plus") TARGET="/usr/lib/u-boot/Cubietruck_plus" ;;
+		"FriendlyARM NanoPi NEO") TARGET="/usr/lib/u-boot/nanopi_neo" ;;
+		"FriendlyARM NanoPi NEO 2") TARGET="/usr/lib/u-boot/nanopi_neo2" ;;
+		"FriendlyARM NanoPi NEO Air") TARGET="/usr/lib/u-boot/nanopi_neo_air" ;;
+		"FriendlyARM NanoPi NEO Plus2") TARGET="/usr/lib/u-boot/nanopi_neo_plus2" ;;
+		"Lamobo R1") TARGET="/usr/lib/u-boot/Lamobo_R1" ;;
+		"LeMaker Banana Pi") TARGET="/usr/lib/u-boot/Bananapi" ;;
+		"LeMaker Banana Pro") TARGET="/usr/lib/u-boot/Bananapro" ;;
+		"LinkSprite pcDuino") TARGET="/usr/lib/u-boot/Linksprite_pcDuino" ;;
+		"LinkSprite pcDuino3") TARGET="/usr/lib/u-boot/Linksprite_pcDuino3" ;;
+		"Olimex A10-OLinuXino-LIME") TARGET="/usr/lib/u-boot/A10-OLinuXino-Lime" ;;
+		"Olimex A10s-Olinuxino Micro") TARGET="/usr/lib/u-boot/A10s-OLinuXino-M" ;;
+		"Olimex A20-Olimex-SOM-EVB") TARGET="/usr/lib/u-boot/A20-Olimex-SOM-EVB" ;;
+		"Olimex A20-OLinuXino-LIME") TARGET="/usr/lib/u-boot/A20-OLinuXino-Lime" ;;
+		"Olimex A20-OLinuXino-LIME2") TARGET="/usr/lib/u-boot/A20-OLinuXino-Lime2" ;;
+		"Olimex A20-OLinuXino-LIME2-eMMC") TARGET="/usr/lib/u-boot/A20-OLinuXino-Lime2-eMMC" ;;
+		"Olimex A20-Olinuxino Micro") TARGET="/usr/lib/u-boot/A20-OLinuXino_MICRO" ;;
+		"Olimex A20-OLinuXino-MICRO-eMMC") TARGET="/usr/lib/u-boot/A20-OLinuXino_MICRO-eMMC" ;;
+		"Olimex A64-Olinuxino") TARGET="/usr/lib/u-boot/a64-olinuxino/" ;;
+		"Olimex A64-Olinuxino-eMMC") TARGET="/usr/lib/u-boot/a64-olinuxino-emmc" ;;
+		"Olimex A64 Teres-I") TARGET="/usr/lib/u-boot/teres_i/" ;;
+		"OrangePi Zero Plus2") TARGET="/usr/lib/u-boot/orangepi_zero_plus2/" ;;
+		"OrangePi One Plus") TARGET="/usr/lib/u-boot/orangepi_one_plus/" ;;
+		"Pinebook") TARGET="/usr/lib/u-boot/pinebook" ;;
+		"Pine64 PinePhone Braveheart (1.1)") TARGET='/usr/lib/u-boot/pinephone' ;;
+		"Pine64 PinePhone (1.2)") TARGET='/usr/lib/u-boot/pinephone' ;;
+		"PineTab") TARGET="/usr/lib/u-boot/pinetab" ;;
+		"Pine64+") TARGET="/usr/lib/u-boot/pine64_plus" ;;
+		"Pine64 LTS") TARGET="/usr/lib/u-boot/pine64-lts" ;;
+		"PineRiver Mini X-Plus") TARGET="/usr/lib/u-boot/Mini-X" ;;
+		"SoPine with baseboard") TARGET="/usr/lib/u-boot/sopine_baseboard" ;;
+		"Xunlong Orange Pi Plus / Plus 2") TARGET="/usr/lib/u-boot/orangepi_plus" ;;
+		"Xunlong Orange Pi Zero") TARGET="/usr/lib/u-boot/orangepi_zero" ;;
+		*)
+			echo >&2 "ERROR: Unknown system: ${dtmodelname}"
+			echo >&2 "Specify target: TARGET=/usr/lib/u-boot/<board_name>/"
+			exit 1
+			;;
+	esac
+fi
+
+case "$1" in
+    -f|--force)
+	FORCE=y
+	shift;;
+    -*)
+	echo >&2 "$0: unknown option '$1'"
+	exit 1;;
+esac
+
+DEV="$1"
+if [ -z "$DEV" ] || ! shift || [ -n "$*" ]; then
+    echo >&2 "Usage: $0 /dev/your-sd-or-mmc-or-image"
+    exit 1
+fi
+
+if [ ! -w "$DEV" ] && [ -z "$FORCE" ]; then
+    echo >&2 "$0: device/image ($DEV) must be writable"
+    exit 1
+fi
+DEV="$(readlink -f "$DEV")"
+
+if [ ! -w "$DEV" ] && [ -z "$FORCE" ]; then
+    echo >&2 "$0: device/image ($DEV) not accessible via abs path?!?"
+    exit 1
+fi
+
+if [ -z "$FORCE" ]; then
+    # A very simple sanity check.  GPT mandates a "protective MBR" so this works
+    # even with GPT partitioning.
+    if ! printf '\125\252' | cmp -s -i 0:510 -n 2 - "$DEV"; then
+       echo >&2 "$0: device/image ($DEV) has no MBR partition table"
+       exit 1
+    fi
+
+    # But, on sunxi64, spl will trample upon GPT.
+    if printf 'EFI PART' | cmp -s -i 0:512 -n 8 - "$DEV"; then
+       echo >&2 "$0: device/image ($DEV) uses GPT partition table, unusable on sunxi64"
+       exit 1
+    fi
+fi
+
+imfile="${TARGET}/u-boot-sunxi-with-spl.bin"
+if [ ! -f "$imfile" ]; then
+    echo >&2 "$0: no image file at ${imfile}"
+    exit 1
+fi
+
+echo "Writing U-Boot image ${imfile} to ${DEV}"
+dd conv=fsync,notrunc if="$imfile" of="$DEV" bs=8K seek=1

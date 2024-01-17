@@ -1,0 +1,6 @@
+debian/build/tools/tools/dumpimage      usr/bin
+debian/build/tools/tools/kwboot         usr/bin
+debian/build/tools/tools/mkeficapsule   usr/bin
+debian/build/tools/tools/mkenvimage     usr/bin
+debian/build/tools/tools/mkimage        usr/bin
+debian/build/tools/tools/mksunxiboot    usr/bin

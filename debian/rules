@@ -1,4 +1,164 @@
 #!/usr/bin/make -f
 
+# Disable branch hardening to fix build failure of arch:all build
+# https://bugs.debian.org/1052724
+export DEB_BUILD_MAINT_OPTIONS=hardening=-branch
+
+include /usr/share/dpkg/architecture.mk
+include /usr/share/dpkg/pkg-info.mk
+
+DEBIAN_REVISION ?= $(shell echo $(DEB_VERSION) | sed -e 's,.*+dfsg,+dfsg,')
+
+include debian/targets.mk
+
+ifneq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
+CROSS_COMPILE ?= $(DEB_HOST_GNU_TYPE)-
+cross_build_tools ?= y
+endif
+
+# Enable verbose build by default, disable when terse is specified.
+ifneq (,$(filter terse,$(DEB_BUILD_OPTIONS)))
+VERBOSE=0
+else
+VERBOSE=1
+endif
+common_make_args += V=$(VERBOSE)
+
+# the upstream build passes LDFLAGS directly to ld instead of calling gcc for
+# linking; so instead of passing -Wl,foo in LDFLAGS as in automake builds, one
+# should set LDFLAGS to foo directly
+comma := ,
+LDFLAGS := $(patsubst -Wl$(comma)%,%,$(LDFLAGS))
+
+notools := $(filter pkg.uboot.notools,$(DEB_BUILD_PROFILES))
+
+subarchs := $(shell dh_listpackages --arch --no-package=u-boot-tools)
+
+# Each .deb P in subarch contains $(P_platforms).
+# These profiles remove values from $(P_platforms) for debugging.
+
+# DEB_BUILD_PROFILES='pkg.uboot.subarch.P1 pkg.uboot.subarch.P2'
+# removes all platforms but in packages u-boot-P1 u-boot-P2.
+only_subarchs := $(patsubst pkg.uboot.subarch.%,u-boot-%,\
+                   $(filter pkg.uboot.subarch.%,$(DEB_BUILD_PROFILES)))
+ifneq (,$(only_subarchs))
+  $(foreach pkg,$(filter-out $(only_subarchs),$(subarchs)),$(eval \
+    $(pkg)_platforms :=))
+endif
+
+# DEB_BUILD_PROFILES='pkg.uboot.platform.P1 pkg.uboot.platform.P2'
+# removes all platforms but P1 P2.
+only_platforms := $(patsubst pkg.uboot.platform.%,%,\
+                    $(filter pkg.uboot.platform.%,$(DEB_BUILD_PROFILES)))
+ifneq (,$(only_platforms))
+  $(foreach pkg,$(subarchs),$(eval \
+    $(pkg)_platforms := $(filter $(only_platforms),$($(pkg)_platforms))))
+endif
+
+# Enable debugging symbols and remove build paths
+HOSTCFLAGS = -g -ffile-prefix-map=$(CURDIR)=.
+common_make_args += HOSTCFLAGS='$(HOSTCFLAGS)'
+
 %:
 	dh $@
+
+override_dh_auto_build-indep: u-boot-qemu
+override_dh_auto_build-arch: $(subarchs)
+ifeq ($(notools),)
+  override_dh_auto_build-arch: build-tools
+endif
+
+# These intermediate per-package targets are convenient to add
+# prerequisites to a subarch, but they are empty by default so we need
+# to prevent Make applying the default %: recipe above.
+.PHONY: u-boot-qemu $(subarchs)
+
+define build_template
+
+  # Tell Make to build the platform as part of the package.
+  $(package): $(platform)
+
+  # Qemu platforms set $(platform)_CROSS_COMPILE.
+  $(platform):
+	# debian/rules: building platform: $(platform)
+	mkdir -p debian/build/$(platform)
+
+	dh_auto_build -- $(common_make_args) \
+	  O=debian/build/$(platform) \
+	  CROSS_COMPILE=$(or $($(platform)_CROSS_COMPILE),$(CROSS_COMPILE)) \
+	  $($(package)_assigns) $($(platform)_assigns) \
+	  $(platform)_defconfig
+
+	sed -i -e 's,^CONFIG_LOCALVERSION=.*,CONFIG_LOCALVERSION="$(DEBIAN_REVISION)",' \
+	  debian/build/$(platform)/.config
+
+	dh_auto_build -- $(common_make_args) \
+	  O=debian/build/$(platform) \
+	  CROSS_COMPILE=$(or $($(platform)_CROSS_COMPILE),$(CROSS_COMPILE)) \
+	  $($(package)_assigns) $($(platform)_assigns)
+
+    ifneq (,$(filter uboot.elf,$($(platform)_targets)))
+	cp -u debian/build/$(platform)/u-boot debian/build/$(platform)/uboot.elf
+    endif
+    ifeq ($(package),u-boot-qemu)
+      # TODO: --strip-unneeded as policy recommends? If not, why?
+	$($(platform)_CROSS_COMPILE)strip --remove-section=.comment --remove-section=.note \
+	  debian/build/$(platform)/uboot.elf
+    endif
+    # Upstream generates executable targets (last checked with 2020-10).
+	chmod -x $(addprefix debian/build/$(platform)/,$($(platform)_targets))
+
+  install-$(platform):
+	dh_install -p$(package) $(addprefix debian/build/$(platform)/,$($(platform)_targets)) usr/lib/u-boot/$(platform)
+
+endef
+$(foreach package, u-boot-qemu $(subarchs),\
+  $(foreach platform, $($(package)_platforms),\
+    $(eval $(build_template))))
+
+TOOLSDIR := debian/build/tools
+build-tools:
+	dh_auto_build -- $(common_make_args) \
+	  O=$(TOOLSDIR) \
+	  CROSS_COMPILE=$(CROSS_COMPILE) \
+	  tools-only_defconfig
+	cp $(TOOLSDIR)/.config $(TOOLSDIR)/config
+	# board-independent tools
+	dh_auto_build -- $(common_make_args) \
+		O=$(TOOLSDIR) \
+		CROSS_COMPILE=$(CROSS_COMPILE) \
+		CROSS_BUILD_TOOLS=$(cross_build_tools) \
+		NO_SDL=1 \
+	    tools-all
+
+# Only test when tools are built and native.
+override_dh_auto_test-arch:
+  ifeq ($(notools)$(cross_build_tools),)
+	BASEDIR=$(TOOLSDIR) test/image/test-imagetools.sh
+  endif
+override_dh_auto_test-indep:
+
+# Do not spend time searching for an install target in Makefile.
+override_dh_auto_install:
+
+# override_ would require to test notools, which is unrelated.
+execute_after_dh_install-indep: $(addprefix install-,$(u-boot-qemu_platforms)) installdocs-u-boot-qemu
+execute_after_dh_install-arch: $(addprefix install-,$(foreach package,$(subarchs),$($(package)_platforms))) $(addprefix installdocs-,$(subarchs))
+
+installdocs-%:
+	mkdir -p debian/build/$*/configs
+	for platform in $($*_platforms); do \
+	  cp -u debian/build/$$platform/.config debian/build/$*/configs/config.$$platform; \
+	done
+	dh_installdocs -p$* debian/build/$*/configs
+
+override_dh_clean:
+	rm -rf debian/build/
+	rm -f linux.itb linux.its
+	dh_clean $(dh_clean_args)
+	find . -type d -name __pycache__ -delete
+
+override_dh_gencontrol:
+	dh_gencontrol -- $(dpkg-gencontrol_args) $(foreach package,\
+	  u-boot-qemu $(subarchs),\
+	  '-V$(package):platforms=$(subst $() ,$${Newline},$($(package)_platforms))')

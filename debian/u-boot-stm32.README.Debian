@@ -1,0 +1,19 @@
+== Installation ==
+
+At this point, you must install U-Boot to flash yourself.
+
+STM32MP1 series processors can boot from SD card or eMMC, which must
+contain a GPT partition table with at least the following partitions:
+
+  Nr |   Size | Label | Flags
+  ---|--------|-------|------
+   1 | 256KiB | fsbl1 |
+   2 | 256KiB | fsbl2 |
+   3 |   2MiB |  ssbl |
+   4 |      * |     * | boot
+
+U-Boot can be written to the SD card using the following commands:
+
+  dd if=/usr/lib/u-boot/BOARD/u-boot-spl.stm32 of=/dev/mmcblkXp1
+  dd if=/usr/lib/u-boot/BOARD/u-boot-spl.stm32 of=/dev/mmcblkXp2
+  dd if=/usr/lib/u-boot/BOARD/u-boot.img of=/dev/mmcblkXp3

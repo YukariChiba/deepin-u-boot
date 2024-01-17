@@ -1,15 +1,348 @@
-Source: template-repository
-Section: unknown
+Source: u-boot
+Section: admin
 Priority: optional
-Maintainer: Tsic404 <liuheng@deepin.org>
-Build-Depends: debhelper (>= 11)
-Standards-Version: 4.1.3
-Homepage: https://github.com/deepin-community/template-repository
-#Vcs-Browser: https://salsa.debian.org/debian/deepin-community-template-repository
-#Vcs-Git: https://salsa.debian.org/debian/deepin-community-template-repository.git
+Maintainer: Vagrant Cascadian <vagrant@debian.org>
+Uploaders: Loïc Minier <lool@debian.org>, Clint Adams <clint@debian.org>
+Build-Depends:
+ bc,
+ bison,
+ debhelper-compat (= 13),
+ flex,
+ libpython3-dev:native [linux-any],
+ libssl-dev,
+ python3:any [linux-any],
+ python3-pyelftools [linux-any],
+ python3-setuptools [linux-any],
+ swig [linux-any],
+Build-Depends-Arch:
+ arm-trusted-firmware (>= 2.9~) [arm64],
+ crust-firmware (>= 0.3-2~) [arm64],
+ device-tree-compiler,
+ libfdt-dev:native [arm64],
+ libgnutls28-dev,
+ libgnutls28-dev:native [arm64],
+ libncurses-dev,
+ libncurses-dev:native,
+ libssl-dev:native,
+ lzop [armhf],
+ opensbi (>= 1.3) [riscv64],
+ uuid-dev,
+ uuid-dev:native [arm64],
+Build-Depends-Indep:
+# For u-boot-qemu targets
+ gcc-i686-linux-gnu [!i386],
+ gcc-arm-linux-gnueabihf [!armhf],
+ gcc-aarch64-linux-gnu [!arm64],
+ gcc-riscv64-linux-gnu [!riscv64],
+ gcc-x86-64-linux-gnu [!amd64],
+ gcc-powerpc-linux-gnu [!powerpc],
+ gcc-mips64el-linux-gnuabi64 [!mips64el],
+ gcc-mipsel-linux-gnu [!mipsel],
+Rules-Requires-Root: no
+Standards-Version: 4.6.2
+Homepage: https://www.denx.de/wiki/U-Boot/
+Vcs-Browser: https://salsa.debian.org/debian/u-boot
+Vcs-Git: https://salsa.debian.org/debian/u-boot.git
 
-Package: template-repository
-Architecture: any
+Package: u-boot
+Architecture: armel sh4
+Multi-Arch: same
+Depends: ${misc:Depends},
+Description: A boot loader for embedded systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ Included platforms:
+ ${u-boot:platforms}
+
+Package: u-boot-amlogic
+Architecture: arm64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Recommends: arm-trusted-firmware [arm64]
+Description: A boot loader for amlogic systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various amlogic platforms.
+ .
+ Included platforms:
+ ${u-boot-amlogic:platforms}
+
+Package: u-boot-asahi
+Architecture: arm64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Recommends: m1n1, asahi-fwextract
+Description: A boot loader for Apple Silicon systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various Apple Silicon (M1, M2)
+ platforms supported by the Asahi Linux project, though may lack some
+ features not yet present in mainline u-boot.
+ .
+ Included platforms:
+ ${u-boot-asahi:platforms}
+
+Package: u-boot-imx
+Architecture: armhf
+Multi-Arch: same
+Depends: ${misc:Depends}
+Breaks: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Replaces: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Description: A boot loader for imx systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various imx platforms.
+ .
+ Included platforms:
+ ${u-boot-imx:platforms}
+
+Package: u-boot-qemu
+Architecture: all
+Depends: ${misc:Depends}
+Breaks: u-boot (<< 2019.01+dfsg-2)
+Replaces: u-boot (<< 2019.01+dfsg-2)
+Multi-Arch: foreign
+Description: A boot loader for qemu
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for qemu/kvm.
+ .
+ Included platforms:
+ ${u-boot-qemu:platforms}
+
+Package: u-boot-qcom
+Architecture: arm64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Description: A boot loader for qcom systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various qcom platforms.
+ .
+ Included platforms:
+ ${u-boot-qcom:platforms}
+
+Package: u-boot-tegra
+Architecture: armhf arm64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Breaks: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Replaces: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Description: A boot loader for NVIDIA Tegra systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various NVIDIA Tegra platforms.
+ .
+ Included platforms:
+ ${u-boot-tegra:platforms}
+
+Package: u-boot-omap
+Architecture: armhf
+Multi-Arch: same
+Depends: ${misc:Depends}
+Breaks: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Replaces: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Description: A boot loader for omap systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various omap and related
+ platforms.
+ .
+ Included platforms:
+ ${u-boot-omap:platforms}
+
+Package: u-boot-sunxi
+Architecture: armhf arm64
+Multi-Arch: same
+Built-Using: ${u-boot-sunxi:Built-Using}
+Depends: ${misc:Depends}
+Recommends: u-boot-tools [arm64]
+Suggests: arm-trusted-firmware [arm64]
+Breaks: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Replaces: u-boot (<< 2014.10~rc2+dfsg1-2~)
+Description: A boot loader for sunxi systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various Allwinner/sunxi
+ platforms.
+ .
+ Included platforms:
+ ${u-boot-sunxi:platforms}
+
+Package: u-boot-exynos
+Architecture: armhf
+Multi-Arch: same
+Depends: ${misc:Depends}
+Description: A boot loader for exynos systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various Exynos platforms.
+ .
+ Included platforms:
+ ${u-boot-exynos:platforms}
+
+Package: u-boot-mvebu
+Architecture: arm64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Description: A boot loader for marvell systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various Marvell platforms.
+ .
+ Included platforms:
+ ${u-boot-mvebu:platforms}
+
+Package: u-boot-rockchip
+Architecture: armhf arm64
+Multi-Arch: same
+Built-Using: ${u-boot-rockchip:Built-Using}
+Depends: ${misc:Depends}
+Recommends: python3, u-boot-tools [arm64]
+Suggests: arm-trusted-firmware [arm64]
+Description: A boot loader for rockchip systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various Rockchip platforms.
+ .
+ Included platforms:
+ ${u-boot-rockchip:platforms}
+
+Package: u-boot-rpi
+Architecture: armel armhf arm64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Description: A boot loader for Raspberry PI systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various Raspberry PI
+ platforms.
+ .
+ Included platforms:
+ ${u-boot-rpi:platforms}
+
+Package: u-boot-stm32
+Architecture: armhf
+Multi-Arch: same
+Depends: ${misc:Depends}
+Description: A boot loader for ST Microelectronics systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various ST Microelectronics
+ platforms.
+ .
+ Included platforms:
+ ${u-boot-stm32:platforms}
+
+Package: u-boot-sifive
+Architecture: riscv64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Built-Using: ${u-boot-sifive:Built-Using}
+Description: A boot loader for SiFive systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various SiFive
+ platforms.
+ .
+ Included platforms:
+ ${u-boot-sifive:platforms}
+
+Package: u-boot-starfive
+Architecture: riscv64
+Multi-Arch: same
+Depends: ${misc:Depends}
+Built-Using: ${u-boot-starfive:Built-Using}
+Description: A boot loader for Starfive systems
+ Das U-Boot is a cross-platform bootloader for embedded systems,
+ used as the default boot loader by several board vendors.  It is
+ intended to be easy to port and to debug, and runs on many
+ supported architectures, including PPC, ARM, MIPS, x86, m68k,
+ NIOS, and Microblaze.
+ .
+ This package includes boot loaders for various Starfive
+ platforms.
+ .
+ Included platforms:
+ ${u-boot-starfive:platforms}
+
+Package: u-boot-tools
+Architecture: linux-any
+Build-Profiles: <!pkg.uboot.notools>
+Multi-Arch: foreign
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Recommends: device-tree-compiler,
+ libubootenv-tool,
+Breaks: uboot-envtools (<< 20081215-3~),
+        uboot-mkimage (<= 0.4build1),
+        u-boot (<< 2010.12-2)
+Replaces: uboot-envtools (<< 20081215-3~),
+          uboot-mkimage (<= 0.4build1),
+          u-boot (<< 2010.12-2)
+Description: companion tools for Das U-Boot bootloader
+ This package includes programs for generating and listing U-Boot
+ images in various formats:
+  - mkimage
+  - dumpimage
+  - mksunxiboot
+  - mkenvimage

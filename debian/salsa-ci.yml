@@ -1,0 +1,42 @@
+---
+include:
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/recipes/debian.yml
+
+variables:
+  # no autopkgtest tests
+  SALSA_CI_DISABLE_AUTOPKGTEST: 1
+  # FIXME: ignoring this for now
+  SALSA_CI_DISABLE_BLHC: 1
+  # Enable arch:arm64 builds
+  SALSA_CI_DISABLE_BUILD_PACKAGE_ARM64: 0
+
+blhc:
+  allow_failure: true
+
+test-crossbuild-arm64:
+  allow_failure: true
+  variables:
+    SALSA_CI_DPKG_BUILDPACKAGE_ARGS: --build-profiles='pkg.uboot.platform.odroid-c2 pkg.uboot.platform.mvebu_espressobin-88f3720 pkg.uboot.platform.dragonboard820c pkg.uboot.platform.pinebook-pro-rk3399 pkg.uboot.platform.rpi_arm64 pkg.uboot.platform.pine64_plus pkg.uboot.platform.p2371-2180'
+
+test-crossbuild-armel:
+  allow_failure: true
+  extends:
+    - .test-crossbuild-package-arm64
+  variables:
+    HOST_ARCH: armel
+  rules:
+    - if: $SALSA_CI_DISABLE_CROSSBUILD_ARMEL =~ /^(1|yes|true)$/
+      when: never
+    - if: $BUILD_ARCH != $HOST_ARCH && $HOST_ARCH != ""
+
+test-crossbuild-armhf:
+  allow_failure: true
+  extends:
+    - .test-crossbuild-package-arm64
+  variables:
+    HOST_ARCH: armhf
+    SALSA_CI_DPKG_BUILDPACKAGE_ARGS: --build-profiles='pkg.uboot.platform.odroid-xu3 pkg.uboot.platform.mx6cuboxi pkg.uboot.platform.am57xx_evm pkg.uboot.platform.firefly-rk3288 pkg.uboot.platform.rpi_2 pkg.uboot.platform.stm32mp157c-dk2 pkg.uboot.platform.Lamobo_R1 pkg.uboot.platform.jetson-tk1'
+  rules:
+    - if: $SALSA_CI_DISABLE_CROSSBUILD_ARMHF =~ /^(1|yes|true)$/
+      when: never
+    - if: $BUILD_ARCH != $HOST_ARCH && $HOST_ARCH != ""
